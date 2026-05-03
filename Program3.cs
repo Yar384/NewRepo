@@ -91,8 +91,22 @@ class Program
         Console.Write("Название: ");
         string title = Console.ReadLine();
 
+        if (title.Length > 50)
+        {
+            Console.WriteLine("слишком многа букав");
+            db.Dispose();
+            return;
+        }
+
         Console.Write("Год: ");
         int year = int.Parse(Console.ReadLine());
+
+         if (year <= 0)
+        {
+            Console.WriteLine("слишком молодо");
+            db.Dispose();
+            return;
+        }
 
         Console.Write("Дескриптион: ");
         string description = Console.ReadLine();
