@@ -1,174 +1,256 @@
 using System;
-using System.Data.SQLite;
+using Dapper;
+using LibraryApp;
 
-namespace UserApp
+class Program
 {
-    class Program
+    static void Main(string[] args)
     {
-        static string connectionString = "Data Source=users.db;Version=3;";
-        static void Main(string[] args)
-        {
-            CreateTable();
+        Database.Init();
 
-            while (true)
+        while (true)
+        {
+            Console.WriteLine("1 - Додати книгу");
+            Console.WriteLine("2 - Всі книги");
+            Console.WriteLine("3 - Пошук книги");
+            Console.WriteLine("4 - Видалити книгу за ID");
+            Console.WriteLine("5 - Оновити книгу за ID");
+            Console.WriteLine("0 - Вихід");
+            Console.Write(">> ");
+
+            string choice = Console.ReadLine();
+
+            if (choice == "1") AddBook();
+            else if (choice == "2") ShowAll();
+            else if (choice == "3") SearchMenu();
+            else if (choice == "4") DeleteBook();
+            else if (choice == "5") UpdateBook();
+            else if (choice == "0")
             {
-                Console.WriteLine("1. Добавить пользователя");
-                Console.WriteLine("2. Показать всех пользователей");
-                Console.WriteLine("3. Поиск по username");
-                Console.WriteLine("4. Поиск по email");
-                Console.WriteLine("5. Удалить пользователя");
-                Console.WriteLine("0. Выход");
-                Console.Write(">> ");
-
-                string choice = Console.ReadLine();
-
-                if (choice == "1") AddUser();
-                else if (choice == "2") ShowUsers();
-                else if (choice == "3") SearchByUsername();
-                else if (choice == "4") SearchByEmail();
-                else if (choice == "5") DeleteUser();
-                else if (choice == "0") break;
-                else Console.WriteLine("неверный выбор");
-
-                Console.WriteLine();
+                break;
             }
-        }
+            else Console.WriteLine("невірний вибір");
 
-        static void CreateTable()
+            Console.WriteLine();
+        }
+    }
+
+    static void AddBook()
+    {
+        Console.WriteLine("0 - назад");
+        Console.WriteLine();
+
+        Console.Write("Назва: ");
+        string title = Console.ReadLine();
+        if (title == "0") return;
+
+        Console.Write("Автор: ");
+        string author = Console.ReadLine();
+        if (author == "0") return;
+
+        var con = Database.GetConnection();
+        con.Open();
+
+        con.Execute(
+            "INSERT INTO Books (Title, Author) VALUES (@Title, @Author)",
+            new { Title = title, Author = author }
+        );
+
+        con.Close();
+
+        Console.WriteLine("додано");
+    }
+
+    static void ShowAll()
+    {
+        while (true)
         {
-            SQLiteConnection con = new SQLiteConnection(connectionString);
+            var con = Database.GetConnection();
             con.Open();
 
-            SQLiteCommand cmd = new SQLiteCommand(
-                "CREATE TABLE IF NOT EXISTS Users (" +
-                "Id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "Username TEXT," +
-                "Email TEXT," +
-                "BirthDate TEXT)", con);
-
-            cmd.ExecuteNonQuery();
+            var books = con.Query<Book>("SELECT * FROM Books").AsList();
             con.Close();
-        }
 
-        static void AddUser()
+            PrintBooks(books);
+
+            Console.WriteLine("0 - назад");
+            Console.Write(">> ");
+            string choice = Console.ReadLine();
+            if (choice == "0") return;
+
+            Console.WriteLine();
+        }
+    }
+
+    static void SearchMenu()
+    {
+        while (true)
         {
-            Console.Write("username: ");
-            string username = Console.ReadLine();
+            Console.WriteLine("1 - за назвою");
+            Console.WriteLine("2 - за автором");
+            Console.WriteLine("3 - за ID");
+            Console.WriteLine("0 - назад");
+            Console.Write(">> ");
 
-            Console.Write("email: ");
-            string email = Console.ReadLine();
+            string choice = Console.ReadLine();
 
-            Console.Write("(гггг-мм-дд): ");
-            string birthdate = Console.ReadLine();
+            if (choice == "1") SearchByTitle();
+            else if (choice == "2") SearchByAuthor();
+            else if (choice == "3") SearchById();
+            else if (choice == "0") return;
+            else Console.WriteLine("невірний вибір");
 
-            SQLiteConnection con = new SQLiteConnection(connectionString);
-            con.Open();
-
-            SQLiteCommand cmd = new SQLiteCommand(
-                "INSERT INTO Users (Username, Email, BirthDate) VALUES (@u, @e, @b)", con);
-
-            cmd.Parameters.AddWithValue("@u", username);
-            cmd.Parameters.AddWithValue("@e", email);
-            cmd.Parameters.AddWithValue("@b", birthdate);
-
-            cmd.ExecuteNonQuery();
-            con.Close();
-
-            Console.WriteLine("добавлен");
+            Console.WriteLine();
         }
+    }
 
-        static void ShowUsers()
+    static void SearchByTitle()
+    {
+        Console.Write("Назва: ");
+        string title = Console.ReadLine();
+
+        var con = Database.GetConnection();
+        con.Open();
+
+        var books = con.Query<Book>(
+            "SELECT * FROM Books WHERE Title = @Title",
+            new { Title = title }
+        ).AsList();
+
+        con.Close();
+
+        PrintBooks(books);
+    }
+
+    static void SearchByAuthor()
+    {
+        Console.Write("Автор: ");
+        string author = Console.ReadLine();
+
+        var con = Database.GetConnection();
+        con.Open();
+
+        var books = con.Query<Book>(
+            "SELECT * FROM Books WHERE Author = @Author",
+            new { Author = author }
+        ).AsList();
+
+        con.Close();
+
+        PrintBooks(books);
+    }
+
+    static void SearchById()
+    {
+        Console.Write("ID: ");
+        int id = int.Parse(Console.ReadLine());
+
+        var con = Database.GetConnection();
+        con.Open();
+
+        var books = con.Query<Book>(
+            "SELECT * FROM Books WHERE Id = @Id",
+            new { Id = id }
+        ).AsList();
+
+        con.Close();
+
+        PrintBooks(books);
+    }
+
+    static void DeleteBook()
+    {
+        Console.WriteLine("0 - назад");
+        Console.WriteLine();
+
+        Console.Write("ID: ");
+        string input = Console.ReadLine();
+        if (input == "0") return;
+
+        int id = int.Parse(input);
+
+        var con = Database.GetConnection();
+        con.Open();
+
+        int rows = con.Execute(
+            "DELETE FROM Books WHERE Id = @Id",
+            new { Id = id }
+        );
+
+        con.Close();
+
+        if (rows == 0) Console.WriteLine("не знайдено");
+        else Console.WriteLine("видалено");
+    }
+
+    static void UpdateBook()
+    {
+        Console.WriteLine("0 - назад");
+        Console.WriteLine();
+
+        Console.Write("ID: ");
+        string input = Console.ReadLine();
+        if (input == "0") return;
+
+        int id = int.Parse(input);
+
+        var con = Database.GetConnection();
+        con.Open();
+
+        var book = con.QueryFirstOrDefault<Book>(
+            "SELECT * FROM Books WHERE Id = @Id",
+            new { Id = id }
+        );
+
+        con.Close();
+
+        if (book == null)
         {
-            SQLiteConnection con = new SQLiteConnection(connectionString);
-            con.Open();
-
-            SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM Users", con);
-            SQLiteDataReader reader = cmd.ExecuteReader();
-
-            Console.WriteLine("ID | Username | Email | BirthDate");
-            Console.WriteLine("-----------------------------------");
-
-            while (reader.Read())
-            {
-                Console.WriteLine(reader["Id"] + " | " + reader["Username"] + " | " + reader["Email"] + " | " + reader["BirthDate"]);
-            }
-
-            reader.Close();
-            con.Close();
+            Console.WriteLine("не знайдено");
+            return;
         }
 
-        static void SearchByUsername()
+        Console.WriteLine("Поточна назва: " + book.Title);
+        Console.Write("Нова назва: ");
+        string newTitle = Console.ReadLine();
+
+        Console.WriteLine("Поточний автор: " + book.Author);
+        Console.Write("Новий автор: ");
+        string newAuthor = Console.ReadLine();
+
+        if (newTitle != "") book.Title = newTitle;
+        if (newAuthor != "") book.Author = newAuthor;
+
+        con = Database.GetConnection();
+        con.Open();
+
+        con.Execute(
+            "UPDATE Books SET Title = @Title, Author = @Author WHERE Id = @Id",
+            new { Title = book.Title, Author = book.Author, Id = id }
+        );
+
+        con.Close();
+
+        Console.WriteLine("оновлено");
+    }
+
+    static void PrintBooks(System.Collections.Generic.List<Book> books)
+    {
+        if (books.Count == 0)
         {
-            Console.Write("username: ");
-            string username = Console.ReadLine();
-
-            SQLiteConnection con = new SQLiteConnection(connectionString);
-            con.Open();
-
-            SQLiteCommand cmd = new SQLiteCommand(
-                "SELECT * FROM Users WHERE Username = @u", con);
-
-            cmd.Parameters.AddWithValue("@u", username);
-            SQLiteDataReader reader = cmd.ExecuteReader();
-
-            bool found = false;
-
-            while (reader.Read())
-            {
-                found = true;
-                Console.WriteLine(reader["Id"] + " | " + reader["Username"] + " | " + reader["Email"] + " | " + reader["BirthDate"]);
-            }
-
-            if (!found) Console.WriteLine("не найден");
-
-            reader.Close();
-            con.Close();
+            Console.WriteLine("не знайдено");
+            Console.WriteLine();
+            return;
         }
 
-        static void SearchByEmail()
+        Console.WriteLine("ID | Назва | Автор");
+        Console.WriteLine("------------------");
+
+        foreach (var b in books)
         {
-            Console.Write("email: ");
-            string email = Console.ReadLine();
-
-            SQLiteConnection con = new SQLiteConnection(connectionString);
-            con.Open();
-
-            SQLiteCommand cmd = new SQLiteCommand(
-                "SELECT * FROM Users WHERE Email = @e", con);
-
-            cmd.Parameters.AddWithValue("@e", email);
-            SQLiteDataReader reader = cmd.ExecuteReader();
-
-            bool found = false;
-
-            while (reader.Read())
-            {
-                found = true;
-                Console.WriteLine(reader["Id"] + " | " + reader["Username"] + " | " + reader["Email"] + " | " + reader["BirthDate"]);
-            }
-
-            if (!found) Console.WriteLine("не найден");
-
-            reader.Close();
-            con.Close();
+            Console.WriteLine(b.Id + " | " + b.Title + " | " + b.Author);
         }
 
-        static void DeleteUser()
-        {
-            Console.Write("ID: ");
-            string id = Console.ReadLine();
-
-            SQLiteConnection con = new SQLiteConnection(connectionString);
-            con.Open();
-
-            SQLiteCommand cmd = new SQLiteCommand(
-                "DELETE FROM Users WHERE Id = @id", con);
-
-            cmd.Parameters.AddWithValue("@id", id);
-            cmd.ExecuteNonQuery();
-            con.Close();
-
-            Console.WriteLine("удалён");
-        }
+        Console.WriteLine();
     }
 }
