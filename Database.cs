@@ -1,11 +1,11 @@
 using Microsoft.Data.Sqlite;
 using Dapper;
 
-namespace DogApp
+namespace LibraryApp
 {
     public class Database
     {
-        static string connectionString = "Data Source=dogs.db";
+        static string connectionString = "Data Source=library.db";
 
         public static void Init()
         {
@@ -13,12 +13,10 @@ namespace DogApp
             con.Open();
 
             con.Execute(
-                "CREATE TABLE IF NOT EXISTS Dogs (" +
+                "CREATE TABLE IF NOT EXISTS Books (" +
                 "Id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "Name TEXT," +
-                "Age INTEGER," +
-                "Breed TEXT," +
-                "IsAdopted INTEGER DEFAULT 0)"
+                "Title TEXT," +
+                "Author TEXT)"
             );
 
             con.Close();
